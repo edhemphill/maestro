@@ -22,7 +22,6 @@ import (
 	"strings"
 	"sync"
 	//	"reflect"
-	"github.com/armPelionEdge/greasego"
 	"github.com/armPelionEdge/httprouter"
 	. "github.com/armPelionEdge/maestro"
 	"github.com/armPelionEdge/maestro/configMgr"
@@ -94,7 +93,6 @@ func main() {
 	if *versionFlag {
 		s := maestroutils.Version()
 		fmt.Printf("%s\n", s)
-		fmt.Printf("%s\n", greasego.GetGreaseLibVersion())
 		os.Exit(0)
 	}
 
@@ -225,33 +223,19 @@ func main() {
 	unixLogSocket := config.GetUnixLogSocket()
 	debugging.DEBUG_OUT("Starting greaselib. %s\n", unixLogSocket)
 
-	greasego.StartGreaseLib(func() {
-		debugging.DEBUG_OUT("Grease start cb: Got to here 1\n")
-	})
-	greasego.SetupStandardLevels()
-	greasego.SetupStandardTags()
-
 	if config.LinuxKernelLog && config.LinuxKernelLogLegacy {
 		log.Error("Invalid Config: You can't have both linuxKernelLog: true AND linuxKernelLogLegacy: true. Choose one")
 		os.Exit(1)
 	}
 	if config.LinuxKernelLog {
-		kernelSink := greasego.NewGreaseLibSink(greasego.GREASE_LIB_SINK_KLOG2, nil)
-		greasego.AddSink(kernelSink)
 	}
 	if config.LinuxKernelLogLegacy {
-		kernelSink := greasego.NewGreaseLibSink(greasego.GREASE_LIB_SINK_KLOG, nil)
-		greasego.AddSink(kernelSink)
 	}
 
 	debugging.DEBUG_OUT("UnixLogSocket: %s\n", unixLogSocket)
-	unixSockSink := greasego.NewGreaseLibSink(greasego.GREASE_LIB_SINK_UNIXDGRAM, &unixLogSocket)
-	greasego.AddSink(unixSockSink)
 
 	syslogSock := config.GetSyslogSocket()
 	if len(syslogSock) > 0 {
-		syslogSink := greasego.NewGreaseLibSink(greasego.GREASE_LIB_SINK_SYSLOGDGRAM, &syslogSock)
-		greasego.AddSink(syslogSink)
 	}
 
 	if DB != nil {
@@ -316,12 +300,6 @@ func main() {
 		if len(config.Targets[n].File) > 0 { // honor any substitution vars for the File targets
 			config.Targets[n].File = maestroConfig.GetInterpolatedConfigString(config.Targets[n].File)
 		}
-		opts := greasego.NewGreaseLibTargetOpts()
-		greasego.AssignFromStruct(opts, config.Targets[n]) //, reflect.TypeOf(config.Targets[n]))
-
-		if config.Targets[n].Flag_json_escape_strings {
-			greasego.TargetOptsSetFlags(opts, greasego.GREASE_JSON_ESCAPE_STRINGS)
-		}
 
 		debugging.DEBUG_OUT("%+v\n", opts.FileOpts)
 		debugging.DEBUG_OUT("%+v\n", opts)
@@ -338,56 +316,7 @@ func main() {
 				// skip this target
 				continue
 			}
-
-			// func(err *greasego.GreaseError, data *greasego.TargetCallbackData){
-			// 	DEBUG(_count++)
-			// 	debugging.DEBUG_OUT("}}}}}}}}}}}} TargetCB_count called %d times\n",_count);
-			// 	if(err != nil) {
-			// 		fmt.Printf("ERROR in toCloud target CB %s\n", err.Str)
-			// 	} else {
-			// 		buf := data.GetBufferAsSlice()
-			// 		DEBUG(s := string(buf))
-			// 		debugging.DEBUG_OUT("CALLBACK %+v ---->%s<----\n\n",data,s);
-			// 		client.SubmitLogs(data,buf)
-			// 	}
-			// }
 		}
-
-		func(n int, opts *greasego.GreaseLibTargetOpts) {
-			greasego.AddTarget(opts, func(err *greasego.GreaseError, optsId int, targId uint32) {
-				debugging.DEBUG_OUT("IN CALLBACK %d\n", optsId)
-				if err != nil {
-					fmt.Printf("ERROR on creating target: %s\n", err.Str)
-				} else {
-					// after the Target is added, we can setup the Filters for it
-					if len(config.Targets[n].Filters) > 0 {
-						for l := 0; l < len(config.Targets[n].Filters); l++ {
-							debugging.DEBUG_OUT("Have filter %+v\n", config.Targets[n].Filters[l])
-							filter := greasego.NewGreaseLibFilter()
-							filter.Target = targId
-							// handle the strings:
-							greasego.AssignFromStruct(filter, config.Targets[n].Filters[l]) //, reflect.TypeOf(config.Targets[n].Filters[l]))
-							greasego.SetFilterValue(filter, greasego.GREASE_LIB_SET_FILTER_TARGET, targId)
-							if len(config.Targets[n].Filters[l].Levels) > 0 {
-								mask := maestroConfig.ConvertLevelStringToUint32Mask(config.Targets[n].Filters[l].Levels)
-								greasego.SetFilterValue(filter, greasego.GREASE_LIB_SET_FILTER_MASK, mask)
-							}
-							if len(config.Targets[n].Filters[l].Tag) > 0 {
-								tag := maestroConfig.ConvertTagStringToUint32(config.Targets[n].Filters[l].Tag)
-								greasego.SetFilterValue(filter, greasego.GREASE_LIB_SET_FILTER_MASK, tag)
-							}
-							debugging.DEBUG_OUT("Filter -----------> %+v\n", filter)
-							filterid := greasego.AddFilter(filter)
-							debugging.DEBUG_OUT("Filter ID: %d\n", filterid)
-						}
-					} else {
-						// by default, send all traffic to any target
-
-					}
-				}
-			})
-		}(n, opts) // use anonymous function to preserve 'n' before callback completes
-
 	}
 
 	// should not start workers until after greasego is setup

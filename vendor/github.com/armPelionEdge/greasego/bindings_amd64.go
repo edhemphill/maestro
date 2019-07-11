@@ -106,7 +106,7 @@ type GreaseLibTargetOpts struct {
 	NumBanks uint32
 }
 
-const GREASE_JSON_ESCAPE_STRINGS uint32 = C.GREASE_JSON_ESCAPE_STRINGS
+const GREASE_JSON_ESCAPE_STRINGS uint32 = 2
 
 func TargetOptsSetFlags(opts *GreaseLibTargetOpts, flag uint32) {
 }
@@ -171,11 +171,6 @@ func do_startGreaseLib_cb() {
 func StartGreaseLib(cb GreaseLibStartCB) {
 }
 
-// looks for a field in a struct with 'tag' and returns that
-// field's reflect.Type
-func findTypeByTag(tag string, in interface{}) reflect.Type {
-	return nil
-}
 
 func SetSelfOriginLabel(label string) {
 }
@@ -197,19 +192,7 @@ func AssignFromStruct(opts interface{}, obj interface{}) { //, typ reflect.Type)
 func convertOptsToCGreaseLib(opts *GreaseLibTargetOpts) {
 }
 
-//export do_addTargetCB
-func do_addTargetCB(err *C.GreaseLibError, info *C.GreaseLibStartedTargetInfo) {
-}
-
-//export do_modifyDefaultTargetCB
-func do_modifyDefaultTargetCB(err *C.GreaseLibError, info *C.GreaseLibStartedTargetInfo) {
-}
-
 func NewGreaseLibTargetOpts() *GreaseLibTargetOpts {
-}
-
-//export do_commonTargetCB
-func do_commonTargetCB(err *C.GreaseLibError, d *C.GreaseLibBuf, targetId C.uint32_t) {
 }
 
 func AddTarget(opts *GreaseLibTargetOpts, cb GreaseLibAddTargetCB) {
@@ -265,7 +248,6 @@ const GREASE_LIB_SINK_KLOG uint32 = 0x4
 const GREASE_LIB_SINK_KLOG2 uint32 = 0x5
 
 type GreaseLibSink struct {
-	_binding C.GreaseLibSink
 	id       uint32
 }
 
