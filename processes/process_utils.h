@@ -20,7 +20,6 @@
 #endif
 #include <unistd.h>
 #include <stdint.h>
-#include "grease_lib.h"
 
 #define PROCESS_USE_PGID 0x1
 #define PROCESS_NEW_SID 0x2  // overrides the above
@@ -53,7 +52,14 @@ void setCStringInArray(char **array, char *s, int pos);
 // defined in Go land:
 void sawClosedRedirectedFD(void);
 
-void childClosedFDCallback (GreaseLibError *err, int stream_type, int fd);
+#define GREASE_LIB_MAX_ERR_STRING 256
+
+typedef struct {
+	char Str[GREASE_LIB_MAX_ERR_STRING];
+	int Errno;
+} GreaseError;
+
+void childClosedFDCallback (GreaseError *err, int stream_type, int fd);
 
 char **makeCStringArray(int n);
 void freeCStringArray(char **a);

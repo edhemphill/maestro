@@ -301,16 +301,9 @@ func main() {
 			config.Targets[n].File = maestroConfig.GetInterpolatedConfigString(config.Targets[n].File)
 		}
 
-		debugging.DEBUG_OUT("%+v\n", opts.FileOpts)
-		debugging.DEBUG_OUT("%+v\n", opts)
-		debugging.DEBUG_OUT("%+v\n", *opts.Format_time)
-
 		if strings.Compare(config.Targets[n].Name, "toCloud") == 0 {
 			fmt.Printf("\nFound toCloud target-------->\n")
-			opts.NumBanks = defaults.NUMBER_BANKS_WEBLOG
-			//			DEBUG(_count := 0)
 			if config.Symphony != nil && symphony_client != nil && symphony_err == nil {
-				opts.TargetCB = wwrmi.TargetCB
 			} else {
 				log.Error("Log: 'toCloud' target is enabled, but Symphony API is not configured. Will not work.")
 				// skip this target

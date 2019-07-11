@@ -23,13 +23,12 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <string.h>
 
 // Linux only:
 #include <sys/prctl.h>
 
 #include <uv.h>
-
-#include "grease_lib.h"
 
 #define DEBUG_MAESTRO_NATIVE 1
 #include "process_utils.h"
@@ -38,11 +37,7 @@
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-
-uv_mutex_t forkLock;
-
 void initNative() {
-	uv_mutex_init(&forkLock);
 }
 
 // this error string stuff follow the same pattern in error-common.cc / .h in greaseLib
@@ -123,18 +118,12 @@ void setCStringInArray(char **a, char *s, int pos) {
 	a[pos] = s;
 }
 
-void childClosedFDCallback (GreaseLibError *err, int stream_type, int fd) {
+void childClosedFDCallback (GreaseError *err, int stream_type, int fd) {
 	if(err) {
 
 	} else {
 		printf("CHILD CLOSED FD: type %d, fd %d\n", stream_type,fd);
-		GreaseLib_removeFDForStdout(fd);
 		sawClosedRedirectedFD(); // call back into Go land
-
-		// pid_t lastpid;
-		// while((lastpid = reapChildren()) > 0) {
-		// 	printf("Reaped %d\n",lastpid);
-		// }
 	}
 }
 
@@ -191,27 +180,9 @@ int createChild(char* szCommand,
 	DBG_MAESTRO("createChild 1");
 
 	uint32_t childStartingOriginID = 1000;
-	GreaseLib_getUnusedOriginId(&childStartingOriginID);
-	if(opts) {
-		opts->originLabel = childStartingOriginID;
-	}
-	if(opts && opts->jobname) {
-		GreaseLib_addOriginLabel( childStartingOriginID, opts->jobname, strlen(opts->jobname) );
-		DBG_MAESTRO("Logging: set label to %s %d",opts->jobname,childStartingOriginID);
-	} else {
-		GreaseLib_addOriginLabel( childStartingOriginID, szCommand, strlen(szCommand) );
-	}
 	DBG_MAESTRO("createChild 1.1");
 	// we defer grabbing stdout, until we know we send a message to process
-	// GreaseLib_addFDForStdout( aStdoutPipe[PIPE_READ], childStartingOriginID, childClosedFDCallback );
-	GreaseLib_addFDForStderr( aStderrPipe[PIPE_READ], childStartingOriginID, childClosedFDCallback );
 	DBG_MAESTRO("createChild 1.2");
-	if(!opts->ok_string) {
-		GreaseLib_addFDForStdout( aStdoutPipe[PIPE_READ], childStartingOriginID, childClosedFDCallback );
-	} else {
-		DBG_MAESTRO("Not redirecting STDOUT - have ok_string opt");
-		opts->stdout_fd = aStdoutPipe[PIPE_READ];
-	}
 
 	char *tempEnv[1]; // used if a environmental array was not passed in
 	if (opts->env_GREASE_ORIGIN_ID) {
@@ -233,7 +204,6 @@ int createChild(char* szCommand,
 	}
 
 	DBG_MAESTRO("createChild - about to fork()");
-	uv_mutex_lock(&forkLock);
 
 	pid_t ppid_before_fork = getpid();
 
@@ -335,9 +305,6 @@ int createChild(char* szCommand,
 		exit(nResult);
 	} else if (nChild > 0) {
 		// parent continues here
-		uv_mutex_unlock(&forkLock);
-
-		DBG_MAESTRO("createChild parent past fork() and lock.\n");
 
 		// close unused file descriptors, these are for child only
 		close(aStdinPipe[PIPE_READ]);
@@ -381,7 +348,6 @@ int createChild(char* szCommand,
 		//    close(aStdinPipe[PIPE_WRITE]);
 		//    close(aStdoutPipe[PIPE_READ]);
 	} else {
-		uv_mutex_unlock(&forkLock);
 		// failed to create child
 		close(aStdinPipe[PIPE_READ]);
 		close(aStdinPipe[PIPE_WRITE]);

@@ -17,14 +17,12 @@ package processes
 
 /*
 #cgo amd64 LDFLAGS: -L/usr/lib/x86_64-linux-gnu
-#cgo LDFLAGS: -L${SRCDIR}/../vendor/github.com/armPelionEdge/greasego/deps/lib
-#cgo LDFLAGS: -lgrease -luv -lTW  -lstdc++ -lm -ltcmalloc_minimal -lm
-#cgo CFLAGS: -I${SRCDIR}/../vendor/github.com/armPelionEdge/greasego/deps/include -DDEBUG_BINDINGS -I${SRCDIR}/processes
+#cgo LDFLAGS: -lstdc++ -lm -lm
+#cgo CFLAGS: -DDEBUG_BINDINGS -I${SRCDIR}/processes
 #define GREASE_IS_LOCAL 1
 #include <stdio.h>
 #include <stdlib.h>
 #include "process_utils.h"
-#include "grease_lib.h"
 
 */
 import "C"
