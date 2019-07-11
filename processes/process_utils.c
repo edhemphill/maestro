@@ -24,11 +24,10 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <errno.h>
 
 // Linux only:
 #include <sys/prctl.h>
-
-#include <uv.h>
 
 #define DEBUG_MAESTRO_NATIVE 1
 #include "process_utils.h"
