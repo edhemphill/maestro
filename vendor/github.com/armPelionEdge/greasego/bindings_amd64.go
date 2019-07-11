@@ -72,6 +72,7 @@ func GetGreaseLibVersion() (ret string) {
 var greaseInstance *GreaseLib = nil
 
 func getGreaseLib() *GreaseLib {
+    return nil
 }
 
 type GreaseLibTargetFileOpts struct {
@@ -134,9 +135,6 @@ type addTargetCallbackData struct {
 	targetCB    GreaseLibTargetCB
 }
 
-var addTargetCallbackMap map[int]*addTargetCallbackData
-var addTargetCallbackMapMutex *sync.Mutex
-
 type TargetCallbackData struct {
 	buf    *byte
 	targId uint32
@@ -148,11 +146,9 @@ func RetireCallbackData(data *TargetCallbackData) {
 }
 
 func (data *TargetCallbackData) GetBufferAsSlice() []byte {
+    return nil
 }
 
-// used to map callback targets (targets which have or are a callback)
-var targetCallbackMap map[uint32]GreaseLibTargetCB
-var targetCallbackMapMutex *sync.Mutex
 
 type GreaseLevel uint32
 
@@ -193,12 +189,7 @@ func convertOptsToCGreaseLib(opts *GreaseLibTargetOpts) {
 }
 
 func NewGreaseLibTargetOpts() *GreaseLibTargetOpts {
-}
-
-func AddTarget(opts *GreaseLibTargetOpts, cb GreaseLibAddTargetCB) {
-}
-
-func ModifyDefaultTarget(opts *GreaseLibTargetOpts) int {
+    return nil
 }
 
 const GREASE_LIB_SET_FILEOPTS_MODE uint32 = 0x10000000
@@ -213,8 +204,11 @@ func SetFileOpts(opts GreaseLibTargetOpts, flag uint32, val uint32) {
 }
 
 func SetupStandardLevels() int {
+    return 0
 }
+
 func SetupStandardTags() int {
+    return 0
 }
 
 type GreaseLibFilter struct {
@@ -226,6 +220,7 @@ const GREASE_LIB_SET_FILTER_TARGET uint32 = 0x4
 const GREASE_LIB_SET_FILTER_MASK uint32 = 0x8
 
 func NewGreaseLibFilter() *GreaseLibFilter {
+    return nil
 }
 
 func SetFilterValue(filter *GreaseLibFilter, flag uint32, val uint32) {
@@ -235,10 +230,15 @@ func convertFilterToCGreaseLib(opts *GreaseLibFilter) {
 }
 
 func AddFilter(opts *GreaseLibFilter) int {
+    return 0
 }
+
 func DisableFilter(opts *GreaseLibFilter) int {
+    return 0
 }
+
 func EnableFilter(opts *GreaseLibFilter) int {
+    return 0
 }
 
 const GREASE_LIB_SINK_UNIXDGRAM uint32 = 0x1
@@ -252,9 +252,11 @@ type GreaseLibSink struct {
 }
 
 func NewGreaseLibSink(sinkType uint32, path *string) *GreaseLibSink {
+    return nil
 }
 
 func AddSink(sink *GreaseLibSink) int {
+    return 0
 }
 
 type GreaseLibProcessClosedRedirectCallback func(err *GreaseError, stream_type int, pid int)
@@ -264,9 +266,6 @@ var closedRedirectCB GreaseLibProcessClosedRedirectCallback
 func AssignChildClosedFDCallback(cb GreaseLibProcessClosedRedirectCallback) {
 }
 
-//export do_childClosedFDCallback
-func do_childClosedFDCallback(err *C.GreaseLibError, stream_type C.int, fd C.int) {
-}
 
 func AddFDForStdout(fd int, originId uint32) {
 }
@@ -276,15 +275,14 @@ func AddFDForStderr(fd int, originId uint32) {
 
 func RemoveFDForStderr(fd int) {
 }
+
 func RemoveFDForStdout(fd int) {
 }
 
 func SetInternalTagName(name string) {
-
 }
 
 func SetInternalLogOrigin(originid uint32, name string) {
-	//	internal_origin = C.uint32_t(originid)
 
 }
 
@@ -349,7 +347,9 @@ func LogSuccessf_noOrigin(format string, a ...interface{}) {
 }
 
 func GetUnusedTagId() (goret uint32) {
+    return 0
 }
 
 func GetUnusedOriginId() (goret uint32) {
+    return 0
 }
