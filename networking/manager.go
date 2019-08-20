@@ -49,6 +49,7 @@ import (
 	"github.com/armPelionEdge/maestro/networking/arp"
 	"github.com/armPelionEdge/maestro/storage"
 	"github.com/armPelionEdge/maestro/tasks"
+	"github.com/armPelionEdge/maestro/processes"
 	"github.com/armPelionEdge/maestro/maestroConfig"
 	"github.com/armPelionEdge/maestroSpecs"
 	"github.com/armPelionEdge/maestroSpecs/netevents"
@@ -774,13 +775,48 @@ func (this *networkManagerInstance) setupInterfaces() (err error) {
 }
 
 func (this *networkManagerInstance) SetupExistingInterfaces() (err error) {
-	//TLS config to connect to devicedb
-	var tlsConfig *tls.Config
-
-	log.MaestroInfof("NetworkManager: Setup the intfs using initial boot config first: %v:%v\n", this.networkConfig, this.networkConfig.Interfaces)
+	//log.MaestroInfof("NetworkManager: Setup the intfs using initial boot config first: %v:%v\n", this.networkConfig, this.networkConfig.Interfaces)
 	//Setup the intfs using initial boot config first
 	this.setupInterfaces();
 
+	//Try setup the device using DeviceDB config now
+	go this.initDeviceDBConfig()
+	
+	return
+}
+
+const MAX_DEVICEDB_WAIT_TIME_IN_SECS int = 300 //5 mins
+const DEVICEDB_STATUS_CHECK_INTERVAL_IN_SECS int = 5 //5 secs
+const DEVICEDB_JOB_NAME string = "devicedb"
+func (this *networkManagerInstance) initDeviceDBConfig() {
+	log.MaestroInfof("initDeviceDBConfig: Waiting for devicedb process/job\n")
+	var waitTime int = 0
+
+	for waitTime < MAX_DEVICEDB_WAIT_TIME_IN_SECS {
+		//First wait for devicedb to start
+		devicedbrunning, pid := processes.IsJobActive(DEVICEDB_JOB_NAME)
+		log.MaestroWarnf("initDeviceDBConfig: devicedbrunning: %v, pid: %d\n", devicedbrunning, pid)
+		if(devicedbrunning) {
+			err := this.SetupDeviceDBConfig()
+			if(err != nil) {
+				log.MaestroErrorf("initDeviceDBConfig: error setting up config using devicedb: %v", err)
+			}
+			break
+		} else {
+			time.Sleep(time.Second * time.Duration(DEVICEDB_STATUS_CHECK_INTERVAL_IN_SECS))
+			waitTime += DEVICEDB_STATUS_CHECK_INTERVAL_IN_SECS
+		}
+	}
+
+	if(waitTime >= MAX_DEVICEDB_WAIT_TIME_IN_SECS) {
+		log.MaestroErrorf("initDeviceDBConfig: devicedb is not running, cannot fetch config from devicedb")
+	}
+}
+
+func (this *networkManagerInstance) SetupDeviceDBConfig() (err error) {
+	//TLS config to connect to devicedb
+	var tlsConfig *tls.Config
+	
 	if(this.ddbConnConfig != nil) {
 		log.MaestroInfof("NetworkManager: Found valid devicedb connection config, try connecting and fetching the config from devicedb\n")
 		var ddbNetworkConfig maestroSpecs.NetworkConfigPayload
