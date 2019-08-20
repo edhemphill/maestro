@@ -797,6 +797,9 @@ func (this *networkManagerInstance) initDeviceDBConfig() {
 		devicedbrunning, pid := processes.IsJobActive(DEVICEDB_JOB_NAME)
 		log.MaestroWarnf("initDeviceDBConfig: devicedbrunning: %v, pid: %d\n", devicedbrunning, pid)
 		if(devicedbrunning) {
+			//Service is started, but wait for few seconds for the port to be up and running
+			time.Sleep(time.Second * 10)
+			log.MaestroWarnf("initDeviceDBConfig: connecting to devicedb\n")
 			err := this.SetupDeviceDBConfig()
 			if(err != nil) {
 				log.MaestroErrorf("initDeviceDBConfig: error setting up config using devicedb: %v", err)
