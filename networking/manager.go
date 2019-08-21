@@ -791,6 +791,7 @@ const DEVICEDB_JOB_NAME string = "devicedb"
 func (this *networkManagerInstance) initDeviceDBConfig() {
 	log.MaestroInfof("initDeviceDBConfig: Waiting for devicedb process/job\n")
 	var waitTime int = 0
+	var err error
 
 	for waitTime < MAX_DEVICEDB_WAIT_TIME_IN_SECS {
 		//First wait for devicedb to start
@@ -800,9 +801,11 @@ func (this *networkManagerInstance) initDeviceDBConfig() {
 			//Service is started, but wait for few seconds for the port to be up and running
 			time.Sleep(time.Second * 10)
 			log.MaestroWarnf("initDeviceDBConfig: connecting to devicedb\n")
-			err := this.SetupDeviceDBConfig()
+			err = this.SetupDeviceDBConfig()
 			if(err != nil) {
 				log.MaestroErrorf("initDeviceDBConfig: error setting up config using devicedb: %v", err)
+			} else {
+				log.MaestroWarnf("initDeviceDBConfig: successfully connected to devicedb\n")
 			}
 			break
 		} else {
@@ -811,7 +814,7 @@ func (this *networkManagerInstance) initDeviceDBConfig() {
 		}
 	}
 
-	if(waitTime >= MAX_DEVICEDB_WAIT_TIME_IN_SECS) {
+	if((waitTime >= MAX_DEVICEDB_WAIT_TIME_IN_SECS) || (err != nil)) {
 		log.MaestroErrorf("initDeviceDBConfig: devicedb is not running, cannot fetch config from devicedb")
 	}
 }
