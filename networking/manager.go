@@ -39,6 +39,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"syscall"
 	"sync"
 	"time"
 	"unsafe"
@@ -825,6 +826,9 @@ func (this *networkManagerInstance) SetupDeviceDBConfig() (err error) {
 	
 	if(this.ddbConnConfig != nil) {
 		log.MaestroInfof("NetworkManager: Found valid devicedb connection config, try connecting and fetching the config from devicedb\n")
+		//Device DB config uses deviceid as the relay_id, so uset that toset the hostname
+		log.MaestroWarnf("NetworkManager: Setting hostname: %s\n", this.ddbConnConfig.RelayId)
+		syscall.Sethostname([]byte(this.ddbConnConfig.RelayId))
 		var ddbNetworkConfig maestroSpecs.NetworkConfigPayload
 		relayCaChain, err := ioutil.ReadFile(this.ddbConnConfig.CaChainCert)
 		if err != nil {
