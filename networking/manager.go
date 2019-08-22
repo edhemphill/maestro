@@ -799,7 +799,7 @@ func (this *networkManagerInstance) initDeviceDBConfig() {
 		log.MaestroWarnf("initDeviceDBConfig: devicedbrunning: %v, pid: %d\n", devicedbrunning, pid)
 		if(devicedbrunning) {
 			//Service is started, but wait for few seconds for the port to be up and running
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Second * 20)
 			log.MaestroWarnf("initDeviceDBConfig: connecting to devicedb\n")
 			err = this.SetupDeviceDBConfig()
 			if(err != nil) {
