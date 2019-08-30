@@ -856,11 +856,11 @@ func (this *networkManagerInstance) SetupDeviceDBConfig() (err error) {
 			err_updated := errors.New("Failed to create config analyzer object, unable to fetch config from devicedb")
 			return err_updated
 		} else {
-			log.MaestroInfof("Create new devicedb relay client\n")
+			log.MaestroWarnf("Create new devicedb relay client\n")
 			configClient := maestroConfig.NewDDBRelayConfigClient(tlsConfig, this.ddbConnConfig.DeviceDBUri, this.ddbConnConfig.RelayId, this.ddbConnConfig.DeviceDBPrefix, this.ddbConnConfig.DeviceDBBucket)
 			err = configClient.Config(DDB_NETWORK_CONFIG_NAME).Get(&ddbNetworkConfig)
 			if(err != nil) {
-				log.MaestroInfof("No network config found in devicedb or unable to connect to devicedb err: %v. Let's put the current running config: %v.\n", err, *this.networkConfig)
+				log.MaestroWarnf("No network config found in devicedb or unable to connect to devicedb err: %v. Let's put the current running config: %v.\n", err, *this.networkConfig)
 				err = configClient.Config(DDB_NETWORK_CONFIG_NAME).Put(this.networkConfig)
 				if err != nil {
 					log.MaestroErrorf("Unable to put network config in devicedb err:%v, config will not be monitored from devicedb\n", err)
@@ -869,17 +869,17 @@ func (this *networkManagerInstance) SetupDeviceDBConfig() (err error) {
 				}
 			} else {
 				//We found a config in devicedb, lets try to use and reconfigure network if its an updated one
-				log.MaestroInfof("Found a valid config in devicedb [%v], will try to use and reconfigure network if its an updated one\n", ddbNetworkConfig)
+				log.MaestroWarnf("Found a valid config in devicedb [%v], will try to use and reconfigure network if its an updated one\n", ddbNetworkConfig)
 				identical, _, _, err := configAna.DiffChanges(this.networkConfig, ddbNetworkConfig)
 				if(!identical && (err == nil)) {
 					//The configs are different, lets go ahead reconfigure the intfs
-					log.MaestroInfof("New network config found from devicedb, reconfigure nework using new config\n")
+					log.MaestroWarnf("New network config found from devicedb, reconfigure nework using new config\n")
 					this.networkConfig = &ddbNetworkConfig
 					this.submitConfig(this.networkConfig)
 					//Setup the intfs using new config
 					this.setupInterfaces();
 				} else {
-					log.MaestroInfof("New network config found from devicedb, but its same as boot config, no need to re-configure\n")
+					log.MaestroWarnf("New network config found from devicedb, but its same as boot config, no need to re-configure\n")
 				}
 			}
 
@@ -911,6 +911,8 @@ func (this *networkManagerInstance) SetupDeviceDBConfig() (err error) {
 				//Provide a copy of current network config monitor to Config monitor, not the actual config we use, this would prevent config monitor
 				//directly updating the running config(this.networkConfig).
 				origNetworkConfig = *this.networkConfig
+
+				log.MaestroWarnf("Adding monitor config\n")
 				ddbConfigMon.AddMonitorConfig(&origNetworkConfig, &updatedNetworkConfig, DDB_NETWORK_CONFIG_NAME, configAna)
 			}
 		}
