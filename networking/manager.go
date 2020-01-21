@@ -49,7 +49,6 @@ import (
 	"github.com/armPelionEdge/maestro/log"
 	"github.com/armPelionEdge/maestro/maestroConfig"
 	"github.com/armPelionEdge/maestro/networking/arp"
-	"github.com/armPelionEdge/maestro/processes"
 	"github.com/armPelionEdge/maestro/storage"
 	"github.com/armPelionEdge/maestro/tasks"
 	"github.com/armPelionEdge/maestroSpecs"
@@ -912,7 +911,8 @@ func (this *networkManagerInstance) initDeviceDBConfig() {
 		log.MaestroInfof("initDeviceDBConfig: Waiting for devicedb process/job\n")
 		for totalWaitTime < MAX_DEVICEDB_WAIT_TIME_IN_SECS {
 			//First wait for devicedb to start
-			devicedbrunning, pid = processes.IsJobActive(DEVICEDB_JOB_NAME)
+			devicedbrunning = true
+			pid = 8573
 			log.MaestroWarnf("initDeviceDBConfig: devicedbrunning: %v, pid: %d\n", devicedbrunning, pid)
 			if devicedbrunning {
 				//Service is started, but wait for some seconds for the port to be up and running
