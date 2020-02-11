@@ -73,6 +73,9 @@ func AddProcessRoutes(router *httprouter.Router) {
 	router.POST("/jobConfig/:jobname/:confname", handlePostJobConfig)
 	router.DELETE("/jobConfig/:jobname/:confname", handleDeleteJobConfig)
 
+	router.GET("/logging", handleGetLogging)
+	router.PUT("/logging", handlePutLogging)
+
 	router.GET("/status/:taskid", handleGetTaskStatus)
 
 	router.GET("/net/interfaces", handleGetNetworkInterfaces)
@@ -118,6 +121,45 @@ func handleAlive(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	buffer.WriteString(fmt.Sprintf("{\"ok\":true, \"uptime\":%d}", uptime.Nanoseconds()))
 	w.WriteHeader(http.StatusOK)
 	w.Write(buffer.Bytes())
+	defer r.Body.Close()
+}
+
+func handlePutLogging(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	//get the data to put
+	body, err := ioutil.ReadAll(r.Body)
+	if err == nil {
+		//do something with it
+		fmt.Printf("Logging recieved: %s\n", body)
+		if err == nil {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", err.Error())))
+		}
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", err.Error())))
+	}
+
+	defer r.Body.Close()
+
+}
+
+func handleGetLogging(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	//instantiate the logging class
+	var err error
+	err = nil
+	//get the logging config
+	bytes := []byte("Here is a config string....")
+	fmt.Printf("Logging config: %s\n", bytes)
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+		w.Write(bytes)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", err.Error())))
+	}
+
 	defer r.Body.Close()
 }
 
