@@ -24,6 +24,7 @@ package networking
  * - doing specific things on network up / down
  * - running an mDNS server, to broadcast certain things about the gateway
  * - maintaining the state of interfaces in the storage subsystem
+ * - monitoring deviceDB for requested changes to network or logging configs
  */
 
 import (
@@ -254,6 +255,10 @@ type networkManagerInstance struct {
 const DDB_NETWORK_CONFIG_NAME string = "MAESTRO_NETWORK_CONFIG_ID"
 const DDB_NETWORK_CONFIG_COMMIT_FLAG string = "MAESTRO_NETWORK_CONFIG_COMMIT_FLAG"
 const DDB_NETWORK_CONFIG_CONFIG_GROUP_ID string = "netgroup"
+
+const DDB_LOGGING_CONFIG_NAME string = "MAESTRO_LOGGING_CONFIG_ID"
+const DDB_LOGGING_CONFIG_COMMIT_FLAG string = "MAESTRO_LOGGING_CONFIG_COMMIT_FLAG"
+const DDB_LOGGING_CONFIG_CONFIG_GROUP_ID string = "logging"
 
 func (inst *networkManagerInstance) getNewDnsBufferForInterface(ifname string) (ret *dnsBuf) {
 	ret = new(dnsBuf)
@@ -1064,6 +1069,97 @@ func (this *networkManagerInstance) SetupDeviceDBConfig() (err error) {
 				var updatedConfigCommit ConfigCommit
 				log.MaestroInfof("NetworkManager: Adding monitor for config commit object\n")
 				this.ddbConfigMonitor.AddMonitorConfig(&this.CurrConfigCommit, &updatedConfigCommit, DDB_NETWORK_CONFIG_COMMIT_FLAG, configAna)
+			}
+		}
+
+		// Create a config analyzer object for the logging section
+		var ddbLoggingConfig []maestroSpecs.LogTarget
+		configAnaLog := maestroSpecs.NewConfigAnalyzer(DDB_LOGGING_CONFIG_CONFIG_GROUP_ID)
+		if configAnaLog == nil {
+			log.MaestroErrorf("NetworkManager: Failed to create logging config analyzer object, unable to fetch config from devicedb")
+			err_updated := errors.New("Failed to create logging config analyzer object, unable to fetch config from devicedb")
+			return err_updated
+		} else {
+			// this.ddbConfigClient is created by the network config analyzer above
+			err = this.ddbConfigClient.Config(DDB_LOGGING_CONFIG_NAME).Get(&ddbLoggingConfig)
+			if err != nil {
+				log.MaestroWarnf("NetworkManager: No logging config found in devicedb or unable to connect to devicedb err: %v. Let's put the current running config: %v.\n", err, *this.networkConfig)
+				err = this.ddbConfigClient.Config(DDB_LOGGING_CONFIG_NAME).Put(this.networkConfig)
+				if err != nil {
+					log.MaestroErrorf("NetworkManager: Unable to put logging config in devicedb err:%v, config will not be monitored from devicedb\n", err)
+					err_updated := errors.New(fmt.Sprintf("\nUnable to put network config in devicedb err:%v, config will not be monitored from devicedb\n", err))
+					return err_updated
+				}
+			} else {
+				//We found a config in devicedb, lets try to use and reconfigure network if its an updated one
+				log.MaestroInfof("NetworkManager: Found a valid config in devicedb [%v], will try to use and reconfigure network if its an updated one\n", ddbNetworkConfig)
+				identical, _, _, err := configAna.DiffChanges(this.networkConfig, ddbNetworkConfig)
+				if !identical && (err == nil) {
+					//The configs are different, lets go ahead reconfigure the intfs
+					log.MaestroDebugf("NetworkManager: New network config found from devicedb, reconfigure nework using new config\n")
+					this.networkConfig = &ddbNetworkConfig
+					this.submitConfig(this.networkConfig)
+					//Setup the intfs using new config
+					this.setupInterfaces()
+					//Set the hostname again as we reconfigured the network
+					log.MaestroWarnf("NetworkManager: Again setting hostname: %s\n", this.ddbConnConfig.RelayId)
+					syscall.Sethostname([]byte(this.ddbConnConfig.RelayId))
+				} else {
+					log.MaestroInfof("NetworkManager: New network config found from devicedb, but its same as boot config, no need to re-configure\n")
+				}
+			}
+			//Since we are booting set the Network config commit flag to false
+			log.MaestroWarnf("NetworkManager: Setting Network config commit flag to false\n")
+			this.CurrConfigCommit.ConfigCommitFlag = false
+			this.CurrConfigCommit.LastUpdateTimestamp = ""
+			this.CurrConfigCommit.TotalCommitCountFromBoot = 0
+			err = this.ddbConfigClient.Config(DDB_NETWORK_CONFIG_COMMIT_FLAG).Put(&this.CurrConfigCommit)
+			if err != nil {
+				log.MaestroErrorf("NetworkManager: Unable to put network commit flag in devicedb err:%v, config will not be monitored from devicedb\n", err)
+				err_updated := errors.New(fmt.Sprintf("\nUnable to put network commit flag in devicedb err:%v, config will not be monitored from devicedb\n", err))
+				return err_updated
+			}
+
+			//Now start a monitor for the network config in devicedb
+			err, this.ddbConfigMonitor = maestroConfig.NewDeviceDBMonitor(this.ddbConnConfig)
+			if err != nil {
+				log.MaestroErrorf("NetworkManager: Unable to create config monitor: %v\n", err)
+			} else {
+				//Add config change hook for all property groups, we can use the same interface
+				var networkConfigChangeHook NetworkConfigChangeHook
+
+				configAna.AddHook("dhcp", networkConfigChangeHook)
+				configAna.AddHook("if", networkConfigChangeHook)
+				configAna.AddHook("ipv4", networkConfigChangeHook)
+				configAna.AddHook("ipv6", networkConfigChangeHook)
+				configAna.AddHook("mac", networkConfigChangeHook)
+				configAna.AddHook("wifi", networkConfigChangeHook)
+				configAna.AddHook("IEEE8021x", networkConfigChangeHook)
+				configAna.AddHook("route", networkConfigChangeHook)
+				configAna.AddHook("http", networkConfigChangeHook)
+				configAna.AddHook("nameserver", networkConfigChangeHook)
+				configAna.AddHook("gateway", networkConfigChangeHook)
+				configAna.AddHook("dns", networkConfigChangeHook)
+				configAna.AddHook("config_netif", networkConfigChangeHook)
+				configAna.AddHook("config_network", networkConfigChangeHook)
+
+				//Add monitor for this config
+				var origNetworkConfig, updatedNetworkConfig maestroSpecs.NetworkConfigPayload
+				//Provide a copy of current network config monitor to Config monitor, not the actual config we use, this would prevent config monitor
+				//directly updating the running config(this.networkConfig).
+				origNetworkConfig = *this.networkConfig
+
+				//Adding monitor config
+				this.ddbConfigMonitor.AddMonitorConfig(&origNetworkConfig, &updatedNetworkConfig, DDB_LOGGING_CONFIG_NAME, configAna)
+
+				//Add config change hook for all property groups, we can use the same interface
+				var commitConfigChangeHook CommitConfigChangeHook
+				configAna.AddHook("config_commit", commitConfigChangeHook)
+
+				//Add monitor for this object
+				var updatedConfigCommit ConfigCommit
+				log.MaestroInfof("NetworkManager: Adding monitor for config commit object\n")
+				this.ddbConfigMonitor.AddMonitorConfig(&this.CurrConfigCommit, &updatedConfigCommit, DDB_LOGGING_CONFIG_COMMIT_FLAG, configAna)
 			}
 		}
 	} else {
@@ -2152,7 +2248,7 @@ func InitNetworkManager(networkconfig *maestroSpecs.NetworkConfigPayload, ddbcon
 		log.MaestroInfof("NetworkManager: Submit config read from config file\n")
 		inst.submitConfig(inst.networkConfig)
 	} else {
-		return errors.New("NetworkManager: No network configuration set, unable to cofigure network")
+		log.MaestroErrorf("NetworkManager: No network configuration set, unable to cofigure network\n")
 	}
 
 	return
